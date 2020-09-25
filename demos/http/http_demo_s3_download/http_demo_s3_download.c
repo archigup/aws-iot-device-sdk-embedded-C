@@ -1,5 +1,4 @@
 /*
- * AWS IoT Device SDK for Embedded C V202009.00
  * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -22,7 +21,6 @@
 
 /* Standard includes. */
 #include <assert.h>
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -54,10 +52,23 @@
     #error "Please define a ROOT_CA_CERT_PATH."
 #endif
 
-/* Check that the pre-signed GET URL is defined. */
-#ifndef S3_PRESIGNED_GET_URL
-    #error "Please define a S3_PRESIGNED_GET_URL."
+/* Check that a path for HTTP Method GET is defined. */
+#ifndef S3_PRESIGNED_URL
+    #error "Please define a S3_PRESIGNED_URL."
 #endif
+
+/**
+ * @brief ALPN protocol name to be sent as part of the ClientHello message.
+ *
+ * @note When using ALPN, port 443 must be used to connect to AWS IoT Core.
+ */
+#define IOT_CORE_ALPN_PROTOCOL_NAME    "\x0ex-amzn-http-ca"
+
+
+/**
+ * @brief Delay in seconds between each iteration of the demo.
+ */
+#define DEMO_LOOP_DELAY_SECONDS    ( 5U )
 
 /* Check that transport timeout for transport send and receive is defined. */
 #ifndef TRANSPORT_SEND_RECV_TIMEOUT_MS
@@ -75,29 +86,36 @@
 #endif
 
 /**
- * @brief Length of the pre-signed GET URL defined in demo_config.h.
- */
-#define S3_PRESIGNED_GET_URL_LENGTH    ( sizeof( S3_PRESIGNED_GET_URL ) - 1 )
-
-/**
- * @brief Delay in seconds between each iteration of the demo.
- */
-#define DEMO_LOOP_DELAY_SECONDS        ( 5U )
-
-/**
  * @brief The length of the HTTP GET method.
  */
-#define HTTP_METHOD_GET_LENGTH         ( sizeof( HTTP_METHOD_GET ) - 1 )
+#define HTTP_METHOD_GET_LENGTH                    ( sizeof( HTTP_METHOD_GET ) - 1 )
 
 /**
- * @brief A buffer used in the demo for storing HTTP request headers and HTTP
- * response headers and body.
+ * @brief Field name of the HTTP Range header to read from server response.
+ */
+#define HTTP_CONTENT_RANGE_HEADER_FIELD           "Content-Range"
+
+/**
+ * @brief Length of the HTTP Range header field.
+ */
+#define HTTP_CONTENT_RANGE_HEADER_FIELD_LENGTH    ( sizeof( HTTP_CONTENT_RANGE_HEADER_FIELD ) - 1 )
+
+/**
+ * @brief A buffer used in the demo for storing HTTP request headers and
+ * HTTP response headers and body.
  *
  * @note This demo shows how the same buffer can be re-used for storing the HTTP
- * response after the HTTP request is sent out. However, the user can decide how
- * to use buffers to store HTTP requests and responses.
+ * response after the HTTP request is sent out. Here, a separate buffer is used
+ * to download the file from the server. However, the user can decide how to use
+ * buffers to store HTTP requests and responses.
  */
 static uint8_t userBuffer[ USER_BUFFER_LENGTH ];
+
+/**
+ * @brief A buffer used in the demo for downloading the file from the server
+ * in chunks.
+ */
+static uint8_t fileDownloadBuffer[ FILE_BUFFER_LENGTH ];
 
 /**
  * @brief Represents header data that will be sent in an HTTP request.
@@ -115,61 +133,62 @@ static HTTPRequestInfo_t requestInfo;
  */
 static HTTPResponse_t response;
 
-/**
- * @brief The host address string extracted from the pre-signed URL.
- *
- * @note S3_PRESIGNED_GET_URL_LENGTH is set as the array length here as the
- * length of the host name string cannot exceed this value.
- */
-static char serverHost[ S3_PRESIGNED_GET_URL_LENGTH ];
+/* The location of the host address within string S3_PRESIGNED_URL. */
+static const char * pAddress = NULL;
 
-/**
- * @brief The length of the host address found in the pre-signed URL.
- */
-static size_t serverHostLength;
+/* The host address string extracted from S3_PRESIGNED_URL. */
+static char serverHost;
 
-/**
- * @brief The location of the path within the pre-signed URL.
- */
-static const char * pPath;
+/* The length of the host address found in string S3_PRESIGNED_URL. */
+static size_t serverHostLength = 0;
 
 /*-----------------------------------------------------------*/
 
 /**
  * @brief Connect to HTTP server with reconnection retries.
  *
- * @param[out] pNetworkContext The output parameter to return the created
- * network context.
+ * @param[out] pNetworkContext The output parameter to return the created network context.
  *
  * @return EXIT_FAILURE on failure; EXIT_SUCCESS on successful connection.
  */
 static int32_t connectToServer( NetworkContext_t * pNetworkContext );
 
 /**
- * @brief Send multiple HTTP GET requests, based on a specified path, to
- * download a file in chunks from the host S3 server.
+ * @brief Retrieve the size of the S3 object that is specified in pPath.
  *
- * @param[in] pTransportInterface The transport interface for making network
- * calls.
- * @param[in] pPath The Request-URI to the objects of interest. This string
- * should be null-terminated.
- *
- * @return The status of the file download using multiple GET requests to the
- * server: true on success, false on failure.
+ * @param[out] pFileSize - The size of the S3 object.
+ * @param[in] pTransportInterface The transport interface for making network calls.
+ * @param[in] pHost The host name of the server.
+ * @param[in] pMethod The HTTP request method.
+ * @param[in] pPath The Request-URI to the objects of interest.
  */
-static bool downloadS3ObjectFile( const TransportInterface_t * pTransportInterface,
-                                  const char * pPath );
+static HTTPStatus_t getS3ObjectFileSize( size_t * pFileSize,
+                                         const TransportInterface_t * pTransportInterface,
+                                         const char * pHost,
+                                         const char * pMethod,
+                                         const char * pPath );
+
+/**
+ * @brief Send an HTTP request based on a specified method and path, then
+ * print the response received from the server.
+ *
+ * @param[in] pTransportInterface The transport interface for making network calls.
+ * @param[in] pHost The host name of the server.
+ * @param[in] pMethod The HTTP request method.
+ * @param[in] pPath The Request-URI to the objects of interest.
+ *
+ * @return EXIT_FAILURE on failure; EXIT_SUCCESS on success.
+ */
+static int downloadS3ObjectFile( const TransportInterface_t * pTransportInterface,
+                                 const char * pHost,
+                                 const char * pMethod,
+                                 const char * pPath );
 
 /*-----------------------------------------------------------*/
 
 static int32_t connectToServer( NetworkContext_t * pNetworkContext )
 {
     int32_t returnStatus = EXIT_FAILURE;
-    HTTPStatus_t httpStatus = HTTP_SUCCESS;
-
-    /* The location of the host address within the pre-signed URL. */
-    const char * pAddress = NULL;
-
     /* Status returned by OpenSSL transport implementation. */
     OpensslStatus_t opensslStatus;
     /* Credentials to establish the TLS connection. */
@@ -181,40 +200,41 @@ static int32_t connectToServer( NetworkContext_t * pNetworkContext )
     ( void ) memset( &opensslCredentials, 0, sizeof( opensslCredentials ) );
     opensslCredentials.pRootCaPath = ROOT_CA_CERT_PATH;
 
-    /* Retrieve the address location and length from S3_PRESIGNED_GET_URL. */
-    httpStatus = getUrlAddress( S3_PRESIGNED_GET_URL,
-                                S3_PRESIGNED_GET_URL_LENGTH,
-                                &pAddress,
-                                &serverHostLength );
-
-    returnStatus = ( httpStatus == HTTP_SUCCESS ) ? EXIT_SUCCESS : EXIT_FAILURE;
-
-    if( returnStatus == EXIT_SUCCESS )
+    /* ALPN is required when communicating to AWS IoT Core over port 443 through HTTP. */
+    if( HTTPS_PORT == 443 )
     {
-        /* serverHost should consist only of the host address located in
-         * S3_PRESIGNED_GET_URL. */
-        memcpy( serverHost, pAddress, serverHostLength );
-        serverHost[ serverHostLength ] = '\0';
+        opensslCredentials.pAlpnProtos = IOT_CORE_ALPN_PROTOCOL_NAME;
+        opensslCredentials.alpnProtosLen = strlen( IOT_CORE_ALPN_PROTOCOL_NAME );
+    }
 
-        /* Initialize server information. */
-        serverInfo.pHostName = serverHost;
-        serverInfo.hostNameLength = serverHostLength;
-        serverInfo.port = HTTPS_PORT;
+    /* serverHost should consist only of the host address located in S3_PRESIGNED_URL. */
+    memcpy( &serverHost, pAddress, serverHostLength );
 
-        /* Establish a TLS session with the HTTP server. This example connects
-         * to the HTTP server as specified in SERVER_HOST and HTTPS_PORT in
-         * demo_config.h. */
-        LogInfo( ( "Establishing a TLS session with %s:%d.",
-                   serverHost,
-                   HTTPS_PORT ) );
+    /* Initialize server information. */
+    serverInfo.pHostName = &serverHost;
+    serverInfo.hostNameLength = serverHostLength;
+    serverInfo.port = HTTPS_PORT;
 
-        opensslStatus = Openssl_Connect( pNetworkContext,
-                                         &serverInfo,
-                                         &opensslCredentials,
-                                         TRANSPORT_SEND_RECV_TIMEOUT_MS,
-                                         TRANSPORT_SEND_RECV_TIMEOUT_MS );
+    /* Establish a TLS session with the HTTP server. This example connects
+     * to the HTTP server as specified in SERVER_HOST and HTTPS_PORT
+     * in demo_config.h. */
+    LogInfo( ( "Establishing a TLS session with %s:%d.",
+               &serverHost,
+               HTTPS_PORT ) );
 
-        returnStatus = ( opensslStatus == OPENSSL_SUCCESS ) ? EXIT_SUCCESS : EXIT_FAILURE;
+    opensslStatus = Openssl_Connect( pNetworkContext,
+                                     &serverInfo,
+                                     &opensslCredentials,
+                                     TRANSPORT_SEND_RECV_TIMEOUT_MS,
+                                     TRANSPORT_SEND_RECV_TIMEOUT_MS );
+
+    if( opensslStatus == OPENSSL_SUCCESS )
+    {
+        returnStatus = EXIT_SUCCESS;
+    }
+    else
+    {
+        returnStatus = EXIT_FAILURE;
     }
 
     return returnStatus;
@@ -222,33 +242,26 @@ static int32_t connectToServer( NetworkContext_t * pNetworkContext )
 
 /*-----------------------------------------------------------*/
 
-static bool downloadS3ObjectFile( const TransportInterface_t * pTransportInterface,
-                                  const char * pPath )
+static HTTPStatus_t getS3ObjectFileSize( size_t * pFileSize,
+                                         const TransportInterface_t * pTransportInterface,
+                                         const char * pHost,
+                                         const char * pMethod,
+                                         const char * pPath )
 {
-    bool returnStatus = false;
     HTTPStatus_t httpStatus = HTTP_SUCCESS;
 
-    /* The size of the file we are trying to download in S3. */
-    size_t fileSize = 0;
+    /* The location of the file size in contentRangeValStr. */
+    char * pFileSizeStr = NULL;
 
-    /* The number of bytes we want to request with in each range of the file
-     * bytes. */
-    size_t numReqBytes = 0;
-    /* curByte indicates which starting byte we want to download next. */
-    size_t curByte = 0;
-
-    assert( pPath != NULL );
-
-    /* Initialize all HTTP Client library API structs to 0. */
-    ( void ) memset( &requestHeaders, 0, sizeof( requestHeaders ) );
-    ( void ) memset( &requestInfo, 0, sizeof( requestInfo ) );
-    ( void ) memset( &response, 0, sizeof( response ) );
+    /* String to store the Content-Range header value. */
+    char * contentRangeValStr = NULL;
+    size_t contentRangeValStrLength = 0;
 
     /* Initialize the request object. */
-    requestInfo.pHost = serverHost;
-    requestInfo.hostLen = serverHostLength;
-    requestInfo.method = HTTP_METHOD_GET;
-    requestInfo.methodLen = HTTP_METHOD_GET_LENGTH;
+    requestInfo.pHost = pHost;
+    requestInfo.hostLen = strlen( pHost );
+    requestInfo.method = pMethod;
+    requestInfo.methodLen = strlen( pMethod );
     requestInfo.pPath = pPath;
     requestInfo.pathLen = strlen( pPath );
 
@@ -261,34 +274,156 @@ static bool downloadS3ObjectFile( const TransportInterface_t * pTransportInterfa
     requestHeaders.pBuffer = userBuffer;
     requestHeaders.bufferLen = USER_BUFFER_LENGTH;
 
-    /* Initialize the response object. The same buffer used for storing request
-     * headers is reused here. */
+    /* Initialize the response object. The same buffer used for storing
+     * request headers is reused here. */
     response.pBuffer = userBuffer;
     response.bufferLen = USER_BUFFER_LENGTH;
 
-    /* Verify the file exists by retrieving the file size. */
-    returnStatus = getS3ObjectFileSize( &fileSize,
-                                        pTransportInterface,
-                                        serverHost,
-                                        serverHostLength,
-                                        pPath );
+    LogInfo( ( "Getting file object size from host..." ) );
 
-    if( fileSize < RANGE_REQUEST_LENGTH )
+    httpStatus = HTTPClient_InitializeRequestHeaders( &requestHeaders,
+                                                      &requestInfo );
+
+    if( httpStatus == HTTP_SUCCESS )
+    {
+        /* Add the header to get bytes=0-0. S3 will respond with a Content-Range
+         * header that contains the size of the file in it. This header will look
+         * like: "Content-Range: bytes 0-0/FILESIZE". The body will have a single
+         * byte that we are ignoring. */
+        httpStatus = HTTPClient_AddRangeHeader( &requestHeaders, 0, 0 );
+    }
+
+    if( httpStatus == HTTP_SUCCESS )
+    {
+        /* Send the request and receive the response. */
+        httpStatus = HTTPClient_Send( pTransportInterface,
+                                      &requestHeaders,
+                                      NULL,
+                                      0,
+                                      &response,
+                                      0 );
+    }
+
+    if( httpStatus == HTTP_SUCCESS )
+    {
+        LogInfo( ( "Received HTTP response from %s%s...",
+                   pHost, pPath ) );
+        LogInfo( ( "Response Headers:\n%.*s",
+                   ( int32_t ) response.headersLen,
+                   response.pHeaders ) );
+        LogInfo( ( "Response Status:\n%u",
+                   response.statusCode ) );
+        LogInfo( ( "Response Body:\n%.*s\n",
+                   ( int32_t ) response.bodyLen,
+                   response.pBody ) );
+
+        httpStatus = HTTPClient_ReadHeader( &response,
+                                            ( char * ) HTTP_CONTENT_RANGE_HEADER_FIELD,
+                                            ( size_t ) HTTP_CONTENT_RANGE_HEADER_FIELD_LENGTH,
+                                            ( const char ** ) &contentRangeValStr,
+                                            &contentRangeValStrLength );
+    }
+    else
+    {
+        LogError( ( "Failed to send HTTP %s request to %s%s: Error=%s.",
+                    pMethod, pHost, pPath, HTTPClient_strerror( httpStatus ) ) );
+    }
+
+    if( httpStatus == HTTP_SUCCESS )
+    {
+        /* Parse the Content-Range header value to get the file size. */
+        pFileSizeStr = strstr( contentRangeValStr, "/" );
+
+        if( pFileSizeStr == NULL )
+        {
+            LogError( ( "'/' not present in Content-Range header value: %s.",
+                        contentRangeValStr ) );
+        }
+
+        pFileSizeStr += sizeof( char );
+        *pFileSize = ( size_t ) strtoul( pFileSizeStr, NULL, 10 );
+
+        if( ( *pFileSize == 0 ) || ( *pFileSize == UINT32_MAX ) )
+        {
+            LogError( ( "Error using strtoul to get the file size from %s: fileSize=%d",
+                        pFileSizeStr, ( int32_t ) *pFileSize ) );
+            httpStatus = HTTP_INVALID_PARAMETER;
+        }
+
+        LogInfo( ( "The file is %d bytes long.", ( int32_t ) *pFileSize ) );
+    }
+    else
+    {
+        LogError( ( "Failed to read Content-Range header from HTTP response: Error=%s.",
+                    HTTPClient_strerror( httpStatus ) ) );
+    }
+
+    return httpStatus;
+}
+
+static int downloadS3ObjectFile( const TransportInterface_t * pTransportInterface,
+                                 const char * pHost,
+                                 const char * pMethod,
+                                 const char * pPath )
+{
+    int returnStatus = EXIT_SUCCESS;
+    HTTPStatus_t httpStatus = HTTP_SUCCESS;
+
+    /* The size of the file we are trying to download in S3. */
+    size_t fileSize = 0;
+    /* The number of bytes we want to request with in each range of the file bytes. */
+    size_t numReqBytes = 0;
+    /* curByte indicates which starting byte we want to download next. */
+    size_t curByte = 0;
+
+    /* Initialize the request object. */
+    requestInfo.pHost = pHost;
+    requestInfo.hostLen = strlen( pHost );
+    requestInfo.method = pMethod;
+    requestInfo.methodLen = strlen( pMethod );
+    requestInfo.pPath = pPath;
+    requestInfo.pathLen = strlen( pPath );
+
+    /* Set "Connection" HTTP header to "keep-alive" so that multiple requests
+     * can be sent over the same established TCP connection. This is done in
+     * order to download the file in parts. */
+    requestInfo.reqFlags = HTTP_REQUEST_KEEP_ALIVE_FLAG;
+
+    /* Set the buffer used for storing request headers. */
+    requestHeaders.pBuffer = userBuffer;
+    requestHeaders.bufferLen = USER_BUFFER_LENGTH;
+
+    /* Initialize the response object. The same buffer used for storing
+     * request headers is reused here. */
+    response.pBuffer = fileDownloadBuffer;
+    response.bufferLen = FILE_BUFFER_LENGTH;
+
+    /* Verify the file exists by retrieving the file size. */
+    httpStatus = getS3ObjectFileSize( &fileSize,
+                                      pTransportInterface,
+                                      pHost,
+                                      pMethod,
+                                      pPath );
+
+    if( fileSize < FILE_BUFFER_LENGTH )
     {
         numReqBytes = fileSize;
     }
     else
     {
-        numReqBytes = RANGE_REQUEST_LENGTH;
+        numReqBytes = FILE_BUFFER_LENGTH;
     }
 
     /* Here we iterate sending byte range requests until the full file has been
-     * downloaded. We keep track of the next byte to download with curByte. When
-     * this reaches the fileSize we stop downloading. */
-    while( ( returnStatus == true ) && ( httpStatus == HTTP_SUCCESS ) && ( curByte < fileSize ) )
+     * downloaded. We keep track of the next byte to download with curByte.
+     * When this reaches the fileSize we stop downloading. */
+    while( curByte < fileSize && httpStatus == HTTP_SUCCESS )
     {
-        httpStatus = HTTPClient_InitializeRequestHeaders( &requestHeaders,
-                                                          &requestInfo );
+        if( httpStatus == HTTP_SUCCESS )
+        {
+            httpStatus = HTTPClient_InitializeRequestHeaders( &requestHeaders,
+                                                              &requestInfo );
+        }
 
         if( httpStatus == HTTP_SUCCESS )
         {
@@ -304,14 +439,12 @@ static bool downloadS3ObjectFile( const TransportInterface_t * pTransportInterfa
 
         if( httpStatus == HTTP_SUCCESS )
         {
-            LogInfo( ( "Downloading bytes %d-%d, out of %d total bytes, from %s...:  ",
-                       ( int32_t ) ( curByte ),
-                       ( int32_t ) ( curByte + numReqBytes - 1 ),
-                       ( int32_t ) fileSize,
-                       serverHost ) );
-            LogDebug( ( "Request Headers:\n%.*s",
-                        ( int32_t ) requestHeaders.headersLen,
-                        ( char * ) requestHeaders.pBuffer ) );
+            LogInfo( ( "Downloading %d bytes of S3 Object out of %d total bytes, from %s...:  ",
+                       ( int32_t ) ( curByte + numReqBytes - 1 ), ( int32_t ) fileSize,
+                       pHost ) );
+            LogInfo( ( "Request Headers:\n%.*s",
+                       ( int32_t ) requestHeaders.headersLen,
+                       ( char * ) requestHeaders.pBuffer ) );
             httpStatus = HTTPClient_Send( pTransportInterface,
                                           &requestHeaders,
                                           NULL,
@@ -327,42 +460,39 @@ static bool downloadS3ObjectFile( const TransportInterface_t * pTransportInterfa
 
         if( httpStatus == HTTP_SUCCESS )
         {
-            LogDebug( ( "Received HTTP response from %s%s...",
-                        serverHost, pPath ) );
-            LogDebug( ( "Response Headers:\n%.*s",
-                        ( int32_t ) response.headersLen,
-                        response.pHeaders ) );
+            LogInfo( ( "Received HTTP response from %s%s...",
+                       pHost, pPath ) );
+            LogInfo( ( "Response Headers:\n%.*s",
+                       ( int32_t ) response.headersLen,
+                       response.pHeaders ) );
+            LogInfo( ( "Response Status:\n%u",
+                       response.statusCode ) );
             LogInfo( ( "Response Body:\n%.*s\n",
                        ( int32_t ) response.bodyLen,
                        response.pBody ) );
 
-            /* We increment by the content length because the server may not
-             * have sent us the range we request. */
+            /* We increment by the content length because the server may not have
+             * sent us the range we request. */
             curByte += response.contentLength;
 
             if( ( fileSize - curByte ) < numReqBytes )
             {
                 numReqBytes = fileSize - curByte;
             }
-
-            returnStatus = ( response.statusCode == 206 ) ? true : false;
         }
         else
         {
-            LogError( ( "An error occured in downloading the file. "
-                        "Failed to send HTTP GET request to %s%s: Error=%s.",
-                        serverHost, pPath, HTTPClient_strerror( httpStatus ) ) );
-        }
-
-        if( returnStatus != true )
-        {
-            LogError( ( "Received an invalid response from the server "
-                        "(Status Code: %u).",
-                        response.statusCode ) );
+            LogError( ( "Failed to send HTTP %s request to %s%s: Error=%s.",
+                        pMethod, pHost, pPath, HTTPClient_strerror( httpStatus ) ) );
         }
     }
 
-    return( ( returnStatus == true ) && ( httpStatus == HTTP_SUCCESS ) );
+    if( httpStatus != HTTP_SUCCESS )
+    {
+        returnStatus = EXIT_FAILURE;
+    }
+
+    return returnStatus;
 }
 
 /*-----------------------------------------------------------*/
@@ -370,13 +500,13 @@ static bool downloadS3ObjectFile( const TransportInterface_t * pTransportInterfa
 /**
  * @brief Entry point of demo.
  *
- * This example, using a pre-signed URL,  resolves a S3 domain, establishes a
- * TCP connection, validates the server's certificate using the root CA
- * certificate defined in the config header, then finally performs a TLS
- * handshake with the HTTP server so that all communication is encrypted. After
- * which, the HTTP Client library API is used to download the S3 file (by
- * sending multiple GET requests, filling up the response buffer each time until
- * all parts are downloaded). If any request fails, an error code is returned.
+ * This example resolves a domain, establishes a TCP connection, validates the
+ * server's certificate using the root CA certificate defined in the config header,
+ * then finally performs a TLS handshake with the HTTP server so that all communication
+ * is encrypted. After which, HTTP Client library API is used to download the
+ * S3 file by sending multiple GET requests, filling up the response buffer
+ * each time until all parts are downloaded. If any request fails, an error
+ * code is returned.
  *
  * @note This example is single-threaded and uses statically allocated memory.
  *
@@ -386,16 +516,11 @@ int main( int argc,
 {
     /* Return value of main. */
     int32_t returnStatus = EXIT_SUCCESS;
-    /* Return value of private functions. */
-    bool ret = false;
     /* HTTPS Client library return status. */
     HTTPStatus_t httpStatus = HTTP_SUCCESS;
-
-    /* The length of the path within the pre-signed URL. This variable is
-     * defined in order to store the length returned from parsing the URL, but
-     * it is unused. The path used for the requests in this demo needs all the
-     * query information following the location of the object, to the end of the
-     * S3 presigned URL. */
+    /* The location of the path within string S3_PRESIGNED_URL. */
+    const char * pPath = NULL;
+    /* The length of the path within string S3_PRESIGNED_URL. */
     size_t pathLen = 0;
 
     /* The transport layer interface used by the HTTP Client library. */
@@ -408,29 +533,63 @@ int main( int argc,
 
     for( ; ; )
     {
-        LogInfo( ( "HTTP Client Synchronous S3 download demo using pre-signed URL:\n%s",
-                   S3_PRESIGNED_GET_URL ) );
+        LogInfo( ( "HTTPS Client Synchronous S3 download demo using pre-signed URL:\n%s", S3_PRESIGNED_URL ) );
+
+        /**************************** Parse Signed URL. ******************************/
+        if( returnStatus == EXIT_SUCCESS )
+        {
+            /* Retrieve the path location from S3_PRESIGNED_URL. This function returns the length of the path
+             * without the query into pathLen. */
+            httpStatus = getUrlPath( S3_PRESIGNED_URL,
+                                     strlen( S3_PRESIGNED_URL ),
+                                     &pPath,
+                                     &pathLen );
+
+            if( httpStatus != HTTP_SUCCESS )
+            {
+                LogError( ( "An error occurred in getUrlPath() on URL %s. Error code: %d",
+                            S3_PRESIGNED_URL,
+                            httpStatus ) );
+                returnStatus = EXIT_FAILURE;
+            }
+        }
+
+        if( returnStatus == EXIT_SUCCESS )
+        {
+            /* Retrieve the address location and length from the S3_PRESIGNED_URL. */
+            httpStatus = getUrlAddress( S3_PRESIGNED_URL,
+                                        strlen( S3_PRESIGNED_URL ),
+                                        &pAddress,
+                                        &serverHostLength );
+
+            if( httpStatus != HTTP_SUCCESS )
+            {
+                LogError( ( "An error occurred in getUrlAddress() on URL %s\r\n. Error code %d",
+                            S3_PRESIGNED_URL,
+                            httpStatus ) );
+                returnStatus = EXIT_FAILURE;
+            }
+        }
 
         /**************************** Connect. ******************************/
 
         /* Establish TLS connection on top of TCP connection using OpenSSL. */
         if( returnStatus == EXIT_SUCCESS )
         {
-            /* Attempt to connect to the HTTP server. If connection fails, retry
-             * after a timeout. The timeout value will be exponentially
-             * increased until either the maximum number of attempts or the
-             * maximum timeout value is reached. The function returns
-             * EXIT_FAILURE if the TCP connection cannot be established to the
-             * broker after the configured number of attempts. */
+            /* Attempt to connect to the HTTP server. If connection fails, retry after
+             * a timeout. Timeout value will be exponentially increased till the maximum
+             * attempts are reached or maximum timeout value is reached. The function
+             * returns EXIT_FAILURE if the TCP connection cannot be established to
+             * broker after configured number of attempts. */
             returnStatus = connectToServerWithBackoffRetries( connectToServer,
                                                               &networkContext );
 
             if( returnStatus == EXIT_FAILURE )
             {
-                /* Log an error to indicate connection failure after all
+                /* Log error to indicate connection failure after all
                  * reconnect attempts are over. */
                 LogError( ( "Failed to connect to HTTP server %s.",
-                            serverHost ) );
+                            &serverHost ) );
             }
         }
 
@@ -447,33 +606,15 @@ int main( int argc,
 
         if( returnStatus == EXIT_SUCCESS )
         {
-            /* Retrieve the path location from S3_PRESIGNED_GET_URL. This
-             * function returns the length of the path without the query into
-             * pathLen, which is left unused in this demo. */
-            httpStatus = getUrlPath( S3_PRESIGNED_GET_URL,
-                                     S3_PRESIGNED_GET_URL_LENGTH,
-                                     &pPath,
-                                     &pathLen );
-
-            returnStatus = ( httpStatus == HTTP_SUCCESS ) ? EXIT_SUCCESS : EXIT_FAILURE;
-        }
-
-        if( returnStatus == EXIT_SUCCESS )
-        {
-            ret = downloadS3ObjectFile( &transportInterface,
-                                        pPath );
-            returnStatus = ( ret == true ) ? EXIT_SUCCESS : EXIT_FAILURE;
-        }
-
-        if( returnStatus == EXIT_SUCCESS )
-        {
-            /* Log a message indicating an iteration completed successfully. */
-            LogInfo( ( "Demo completed successfully." ) );
+            returnStatus = downloadS3ObjectFile( &transportInterface,
+                                                 &serverHost,
+                                                 HTTP_METHOD_GET,
+                                                 pPath );
         }
 
         /************************** Disconnect. *****************************/
 
-        /* End the TLS session, then close the TCP connection. */
+        /* End TLS session, then close TCP connection. */
         ( void ) Openssl_Disconnect( &networkContext );
 
         LogInfo( ( "Short delay before starting the next iteration....\n" ) );
