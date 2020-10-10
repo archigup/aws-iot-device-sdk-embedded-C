@@ -47,8 +47,8 @@ dup
 endcond
 endif
 eventcallback
-filterindex
 filesize
+filterindex
 globalsubackstatus
 globalsubscribepacketidentifier
 hashmap
@@ -105,6 +105,7 @@ pem
 pfilesize
 pfixedbuffer
 phost
+pid
 pincomingpacket
 pindex
 pingreq
@@ -144,8 +145,11 @@ pubrel
 py
 qos
 readme
+requestcount
+requestqueue
 resending
 resp
+responsequeue
 resubscribe
 resubscription
 retryutils
@@ -183,10 +187,10 @@ uint
 unsub
 unsuback
 updatesubackstatus
-userguide
 uri
 url
 urllen
 urlparser
+userguide
 ve
 www
