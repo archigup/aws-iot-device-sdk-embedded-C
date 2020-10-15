@@ -1,4 +1,4 @@
-set( DEMO_NAME "http_demo_s3_download_async" )
+set( DEMO_NAME "http_demo_s3_download_multithreaded" )
 
 # Include HTTP library's source and header path variables.
 include( ${CMAKE_SOURCE_DIR}/libraries/standard/coreHTTP/httpFilePaths.cmake )
@@ -31,10 +31,10 @@ target_include_directories(
         ${LOGGING_INCLUDE_DIRS}
 )
 
-if(S3_ROOT_CA_CERT_PATH)
+if(ROOT_CA_CERT_PATH)
     target_compile_definitions(
         ${DEMO_NAME} PRIVATE
-            ROOT_CA_CERT_PATH="${S3_ROOT_CA_CERT_PATH}"
+            ROOT_CA_CERT_PATH="${ROOT_CA_CERT_PATH}"
     )
 endif()
 if(HTTPS_PORT)
@@ -43,15 +43,9 @@ if(HTTPS_PORT)
             HTTPS_PORT=${HTTPS_PORT}
     )
 endif()
-if(S3_PRESIGNED_URL)
+if(S3_PRESIGNED_GET_URL)
     target_compile_definitions(
         ${DEMO_NAME} PRIVATE
-            S3_PRESIGNED_URL="${S3_PRESIGNED_URL}"
-    )
-endif()
-if(S3_FILE_SIZE)
-    target_compile_definitions(
-        ${DEMO_NAME} PRIVATE
-            S3_FILE_SIZE=${S3_FILE_SIZE}
+            S3_PRESIGNED_GET_URL="${S3_PRESIGNED_GET_URL}"
     )
 endif()

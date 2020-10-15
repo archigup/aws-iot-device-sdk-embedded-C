@@ -65,10 +65,9 @@
  *
  * @note S3 uses the Baltimore Cybertrust root CA certificate. To download this certificate, see
  * https://baltimore-cybertrust-root.chain-demos.digicert.com/info/index.html
- * This path can be set with S3_ROOT_CA_CERT_PATH in cmake.
  */
 #ifndef ROOT_CA_CERT_PATH
-    #define ROOT_CA_CERT_PATH    ""
+    #define ROOT_CA_CERT_PATH    "certificates/BaltimoreCyberTrustRoot.crt"
 #endif
 
 /**
@@ -77,25 +76,12 @@
  * @note This script requires AWS CLI to be configured. For instructions, see
  * https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
  *
- * Run this script and paste the output value IOT_DEMO_HTTPS_PRESIGNED_GET_URL into
- * S3_PRESIGNED_URL below.
- */
-#ifndef S3_PRESIGNED_URL
-    #define S3_PRESIGNED_URL    ""
-#endif
-
-/**
- * @brief Size of file to be downloaded from S3
+ * Run this script and paste the output value in S3_PRESIGNED_GET_URL below.
  *
- * @note This script requires AWS CLI to be configured. For instructions, see
- * https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html
- *
- * Run this script and paste the output value IOT_DEMO_HTTPS_PRESIGNED_GET_URL into
- * S3_PRESIGNED_URL below.
+ * #ifndef S3_PRESIGNED_GET__URL
+ *     #define S3_PRESIGNED_GET_URL    ""
+ * #endif
  */
-#ifndef S3_FILE_SIZE
-    #define S3_FILE_SIZE    ( 0 )
-#endif
 
 /**
  * @brief Transport timeout in milliseconds for transport send and receive.
@@ -108,18 +94,8 @@
 #define USER_BUFFER_LENGTH                ( 4096 )
 
 /**
- * @brief The maximum length of a host address.
+ * @brief The number of items that can be held in each queue.
  */
-#define MAX_HOST_ADRESS_LENGTH            ( 100 )
-
-/**
- * @brief The name to use for the request queue.
- */
-#define REQUEST_QUEUE                     "/demo_request_queue"
-
-/**
- * @brief The name to use for the response queue.
- */
-#define RESPONSE_QUEUE                    "/demo_response_queue"
+#define QUEUE_SIZE                        10
 
 #endif /* ifndef DEMO_CONFIG_H_ */
