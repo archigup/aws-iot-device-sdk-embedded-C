@@ -984,6 +984,11 @@ int main( int argc,
             {
                 returnStatus = EXIT_FAILURE;
             }
+            else
+            {
+                /* Log a message indicating an iteration completed successfully. */
+                LogInfo( ( "Demo completed successfully." ) );
+            }
         }
 
         /************************** Disconnect. *****************************/
