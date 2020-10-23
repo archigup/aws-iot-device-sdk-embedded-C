@@ -78,9 +78,7 @@
  *
  * Run this script and paste the output value in S3_PRESIGNED_GET_URL below.
  *
- * #ifndef S3_PRESIGNED_GET__URL
- *     #define S3_PRESIGNED_GET_URL    ""
- * #endif
+ * #define S3_PRESIGNED_GET_URL         "...insert here..."
  */
 
 /**
