@@ -196,7 +196,7 @@ static int connectToServer( NetworkContext_t * pNetworkContext );
  * @param[in] pHost The host name of the server.
  * @param[in] hostLen The length of pHost.
  * @param[in] pRequest The HTTP Request-URI.
- * @param[in] requestLen The length of pRequest.
+ * @param[in] requestUriLen The length of pRequest.
  * @param[in] fileSize The length of the file at S3_PRESIGNED_GET_URL.
  * @param[in] requestQueue The queue to which HTTP requests should be written.
  * @param[in] responseQueue The queue from which HTTP responses should be read.
@@ -206,7 +206,7 @@ static int connectToServer( NetworkContext_t * pNetworkContext );
 static bool downloadS3ObjectFile( const char * pHost,
                                   const size_t hostLen,
                                   const char * pRequest,
-                                  const size_t requestLen,
+                                  const size_t requestUriLen,
                                   mqd_t requestQueue,
                                   mqd_t responseQueue );
 
@@ -320,7 +320,7 @@ static int connectToServer( NetworkContext_t * pNetworkContext )
 static bool downloadS3ObjectFile( const char * pHost,
                                   const size_t hostLen,
                                   const char * pRequest,
-                                  const size_t requestLen,
+                                  const size_t requestUriLen,
                                   mqd_t requestQueue,
                                   mqd_t responseQueue )
 {
@@ -349,7 +349,7 @@ static bool downloadS3ObjectFile( const char * pHost,
     requestInfo.method = HTTP_METHOD_GET;
     requestInfo.methodLen = HTTP_METHOD_GET_LENGTH;
     requestInfo.pPath = pRequest;
-    requestInfo.pathLen = requestLen;
+    requestInfo.pathLen = requestUriLen;
 
     /* Set "Connection" HTTP header to "keep-alive" so that multiple requests
      * can be sent over the same established TCP connection. This is done in
@@ -831,7 +831,7 @@ int main( int argc,
          * the end of the S3 presigned URL. */
         size_t pathLen = 0;
         /* The length of the Request-URI within string S3_PRESIGNED_GET_URL */
-        size_t requestLen = 0;
+        size_t requestUriLen = 0;
 
         /* The transport layer interface used by the HTTP Client library. */
         TransportInterface_t transportInterface = { 0 };
@@ -861,7 +861,7 @@ int main( int argc,
                                      S3_PRESIGNED_GET_URL_LENGTH,
                                      &pPath,
                                      &pathLen );
-            requestLen = strlen( pPath );
+            requestUriLen = strlen( pPath );
 
             if( httpStatus != HTTP_SUCCESS )
             {
@@ -976,7 +976,7 @@ int main( int argc,
             result = downloadS3ObjectFile( pHost,
                                            hostLen,
                                            pPath,
-                                           requestLen,
+                                           requestUriLen,
                                            requestQueue,
                                            responseQueue );
 
