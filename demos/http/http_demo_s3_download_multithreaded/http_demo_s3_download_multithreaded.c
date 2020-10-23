@@ -255,7 +255,8 @@ static bool getS3ObjectFileSize( const HTTPRequestInfo_t * requestInfo,
                                  size_t * pFileSize );
 
 /**
- * @brief Enqueue HTTP requests based on a specified method and path.
+ * @brief Services HTTP requests from the request queue and writes the
+ * responses to the response queue.
  *
  * @param[in] pTransportInterface The transport interface for making network calls.
  *
