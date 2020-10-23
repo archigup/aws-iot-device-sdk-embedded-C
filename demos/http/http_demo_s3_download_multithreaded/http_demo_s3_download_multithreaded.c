@@ -380,7 +380,7 @@ static bool downloadS3ObjectFile( const char * pHost,
          * downloading. We keep track of the number of responses we are waiting for
          * with requestCount.
          */
-        while( queueOpStatus != QUEUE_OP_FAILURE && ( curByte < fileSize || requestCount > 0 ) )
+        while( ( queueOpStatus != QUEUE_OP_FAILURE ) && ( curByte < fileSize || requestCount > 0 ) )
         {
             /* Send range request if remaining. */
             if( curByte < fileSize )
