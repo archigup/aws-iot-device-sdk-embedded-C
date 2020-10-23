@@ -861,6 +861,9 @@ int main( int argc,
                                      S3_PRESIGNED_GET_URL_LENGTH,
                                      &pPath,
                                      &pathLen );
+	    /* The path used for the requests in this demo needs
+	     * all the query information following the location of the object, to
+	     * the end of the S3 presigned URL. */
             requestUriLen = strlen( pPath );
 
             if( httpStatus != HTTP_SUCCESS )
