@@ -611,7 +611,11 @@ static bool getS3ObjectFileSize( const HTTPRequestInfo_t * requestInfo,
             queueOpStatus = retrieveHTTPResponse( responseQueue, &responseItem );
         } while( queueOpStatus == QUEUE_OP_WOULD_BLOCK );
 
-        if( ( queueOpStatus != QUEUE_OP_SUCCESS ) || ( responseItem.response.statusCode != 206 ) )
+        if( queueOpStatus == QUEUE_OP_FAILURE )
+        {
+            returnStatus = false;
+        }
+        else if( responseItem.response.statusCode != 206 )
         {
             LogError( ( "Recieved repsonse with unexpected status code: %d", responseItem.response.statusCode ) );
             returnStatus = false;
