@@ -74,6 +74,11 @@
     #error "Please define a USER_BUFFER_LENGTH."
 #endif
 
+/* Check that size of the user buffer is defined. */
+#ifndef RANGE_REQUEST_LENGTH
+    #error "Please define a RANGE_REQUEST_LENGTH."
+#endif
+
 /* Check the the queue size is defined. */
 #ifndef QUEUE_SIZE
     #error "Please define a QUEUE_SIZE."
@@ -365,14 +370,13 @@ static bool downloadS3ObjectFile( const char * pHost,
 
     if( returnStatus == true )
     {
-        /* Ensure the requested amount will fit in the buffer. */
-        if( fileSize < USER_BUFFER_LENGTH - HTTP_MAX_RESPONSE_HEADERS_SIZE_BYTES )
+        if( fileSize < RANGE_REQUEST_LENGTH )
         {
             numReqBytes = fileSize;
         }
         else
         {
-            numReqBytes = USER_BUFFER_LENGTH - HTTP_MAX_RESPONSE_HEADERS_SIZE_BYTES;
+            numReqBytes = RANGE_REQUEST_LENGTH;
         }
 
         /* Here we iterate sending byte range requests and retrieving responses
