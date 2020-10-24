@@ -422,6 +422,14 @@ static bool downloadS3ObjectFile( const char * pHost,
                 }
                 else if( queueOpStatus == QUEUE_OP_SUCCESS )
                 {
+                    LogInfo( ( "Main thread received HTTP response" ) );
+                    LogInfo( ( "Response Headers:\n%.*s",
+                               ( int32_t ) responseItem.response.headersLen,
+                               responseItem.response.pHeaders ) );
+                    LogInfo( ( "Response Status:\n%u", responseItem.response.statusCode ) );
+                    LogInfo( ( "Response Body:\n%.*s\n", ( int32_t ) responseItem.response.bodyLen,
+                               responseItem.response.pBody ) );
+
                     if( responseItem.response.statusCode != 206 )
                     {
                         LogError( ( "Recieved repsonse with unexpected status code: %d", responseItem.response.statusCode ) );
@@ -430,14 +438,6 @@ static bool downloadS3ObjectFile( const char * pHost,
                     else
                     {
                         requestCount -= 1;
-
-                        LogInfo( ( "Main thread received HTTP response" ) );
-                        LogInfo( ( "Response Headers:\n%.*s",
-                                   ( int32_t ) responseItem.response.headersLen,
-                                   responseItem.response.pHeaders ) );
-                        LogInfo( ( "Response Status:\n%u", responseItem.response.statusCode ) );
-                        LogInfo( ( "Response Body:\n%.*s\n", ( int32_t ) responseItem.response.bodyLen,
-                                   responseItem.response.pBody ) );
                     }
                 }
             }
