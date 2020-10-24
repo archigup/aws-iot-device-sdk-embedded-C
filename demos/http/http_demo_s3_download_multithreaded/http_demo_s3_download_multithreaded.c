@@ -609,7 +609,7 @@ static bool getS3ObjectFileSize( const HTTPRequestInfo_t * requestInfo,
         do
         {
             queueOpStatus = retrieveHTTPResponse( responseQueue, &responseItem );
-        } while ( queueOpStatus == QUEUE_OP_WOULD_BLOCK );
+        } while( queueOpStatus == QUEUE_OP_WOULD_BLOCK );
 
         if( ( queueOpStatus != QUEUE_OP_SUCCESS ) || ( responseItem.response.statusCode != 206 ) )
         {
