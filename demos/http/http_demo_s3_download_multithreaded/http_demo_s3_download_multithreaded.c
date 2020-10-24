@@ -381,7 +381,7 @@ static bool downloadS3ObjectFile( const char * pHost,
          * downloading. We keep track of the number of responses we are waiting for
          * with requestCount.
          */
-        while( ( queueOpStatus != QUEUE_OP_FAILURE ) && ( curByte < fileSize || requestCount > 0 ) )
+        while( ( returnStatus != false ) && ( curByte < fileSize || requestCount > 0 ) )
         {
             /* Send range request if remaining. */
             if( curByte < fileSize )
@@ -391,7 +391,11 @@ static bool downloadS3ObjectFile( const char * pHost,
                                                       curByte,
                                                       curByte + numReqBytes - 1 );
 
-                if( queueOpStatus == QUEUE_OP_SUCCESS )
+                if( queueOpStatus == QUEUE_OP_FAILURE )
+                {
+                    returnStatus = false;
+                }
+                else if( queueOpStatus == QUEUE_OP_SUCCESS )
                 {
                     requestCount += 1;
                     curByte += numReqBytes;
@@ -408,24 +412,31 @@ static bool downloadS3ObjectFile( const char * pHost,
             {
                 queueOpStatus = retrieveHTTPResponse( responseQueue, &responseItem );
 
-                if( queueOpStatus == QUEUE_OP_SUCCESS )
+                if( queueOpStatus == QUEUE_OP_FAILURE )
                 {
-                    requestCount -= 1;
+                    returnStatus = false;
+                }
+                else if( queueOpStatus == QUEUE_OP_SUCCESS )
+                {
+                    if( responseItem.response.statusCode != 206 )
+                    {
+                        LogError( ( "Recieved repsonse with unexpected status code: %d", responseItem.response.statusCode ) );
+                        returnStatus = false;
+                    }
+                    else
+                    {
+                        requestCount -= 1;
 
-                    LogInfo( ( "Main thread received HTTP response" ) );
-                    LogInfo( ( "Response Headers:\n%.*s",
-                               ( int32_t ) responseItem.response.headersLen,
-                               responseItem.response.pHeaders ) );
-                    LogInfo( ( "Response Status:\n%u", responseItem.response.statusCode ) );
-                    LogInfo( ( "Response Body:\n%.*s\n", ( int32_t ) responseItem.response.bodyLen,
-                               responseItem.response.pBody ) );
+                        LogInfo( ( "Main thread received HTTP response" ) );
+                        LogInfo( ( "Response Headers:\n%.*s",
+                                   ( int32_t ) responseItem.response.headersLen,
+                                   responseItem.response.pHeaders ) );
+                        LogInfo( ( "Response Status:\n%u", responseItem.response.statusCode ) );
+                        LogInfo( ( "Response Body:\n%.*s\n", ( int32_t ) responseItem.response.bodyLen,
+                                   responseItem.response.pBody ) );
+                    }
                 }
             }
-        }
-
-        if( queueOpStatus == QUEUE_OP_FAILURE )
-        {
-            returnStatus = false;
         }
     }
 
@@ -596,8 +607,9 @@ static bool getS3ObjectFileSize( const HTTPRequestInfo_t * requestInfo,
             queueOpStatus = retrieveHTTPResponse( responseQueue, &responseItem );
         } while ( queueOpStatus == QUEUE_OP_WOULD_BLOCK );
 
-        if( queueOpStatus != QUEUE_OP_SUCCESS )
+        if( ( queueOpStatus != QUEUE_OP_SUCCESS ) || ( responseItem.response.statusCode != 206 ) )
         {
+            LogError( ( "Recieved repsonse with unexpected status code: %d", responseItem.response.statusCode ) );
             returnStatus = false;
         }
     }
@@ -862,9 +874,10 @@ int main( int argc,
                                      S3_PRESIGNED_GET_URL_LENGTH,
                                      &pPath,
                                      &pathLen );
-	    /* The path used for the requests in this demo needs
-	     * all the query information following the location of the object, to
-	     * the end of the S3 presigned URL. */
+
+            /* The path used for the requests in this demo needs
+             * all the query information following the location of the object, to
+             * the end of the S3 presigned URL. */
             requestUriLen = strlen( pPath );
 
             if( httpStatus != HTTP_SUCCESS )
