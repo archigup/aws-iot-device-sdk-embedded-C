@@ -90,13 +90,13 @@
 #define DEMO_LOOP_DELAY_SECONDS                   ( 5U )
 
 /**
- * @breif The name of the HTTP thread's input queue. Must begin with a slash and
+ * @brief The name of the HTTP thread's input queue. Must begin with a slash and
  * be a valid pathname.
  */
 #define REQUEST_QUEUE                             "/demo_request_queue"
 
 /**
- * @breif The name of the HTTP thread's output queue. Must begin with a slash
+ * @brief The name of the HTTP thread's output queue. Must begin with a slash
  * and be a valid pathname.
  */
 #define RESPONSE_QUEUE                            "/demo_response_queue"
@@ -167,7 +167,7 @@ typedef struct ResponseItem
 typedef enum QueueOpStatus
 {
     /**
-     * @brief The function completed sucessfully.
+     * @brief The function completed successfully.
      */
     QUEUE_OP_SUCCESS,
 
@@ -236,7 +236,7 @@ static QueueOpStatus_t requestS3ObjectRange( const HTTPRequestInfo_t * requestIn
  * @brief Processes an HTTP response from the response queue.
  *
  * @param[in] responseQueue The queue from which HTTP responses should be read.
- * @param[out] responseItem The HTTP response recieved.
+ * @param[out] responseItem The HTTP response received.
  *
  * @return QUEUE_OP_FAILURE on failure; QUEUE_OP_WOULD_BLOCK if would block,
  * QUEUE_OP_SUCCESS on success.
@@ -274,7 +274,7 @@ static pid_t startHTTPThread( const TransportInterface_t * pTransportInterface )
  *
  * @param[in] httpThread The HTTP thread.
  * @param[in] requestQueue The request queue.
- * @param[in] responseQueue The respons queue.
+ * @param[in] responseQueue The response queue.
  */
 static void tearDown( pid_t httpThread,
                       mqd_t requestQueue,
@@ -687,7 +687,7 @@ static pid_t startHTTPThread( const TransportInterface_t * pTransportInterface )
         mqd_t requestQueue = -1;
         mqd_t responseQueue = -1;
 
-        /* Structs for sending or recieving data over queues. */
+        /* Structs for sending or receiving data over queues. */
         RequestItem_t requestItem = { 0 };
         ResponseItem_t responseItem = { 0 };
 
@@ -703,7 +703,7 @@ static pid_t startHTTPThread( const TransportInterface_t * pTransportInterface )
         {
             HTTPStatus_t httpStatus = HTTP_SUCCESS;
 
-            /* Return value of mq_recieve. */
+            /* Return value of mq_receive. */
             int mqread = 0;
             /* Return value of mq_send. */
             int mqerror = 0;
@@ -822,7 +822,7 @@ void tearDown( pid_t httpThread,
  * requests on the request queue, which are used to download
  * the S3 file by sending multiple range requests. While it is doing this, the
  * main thread also reads responses from the response queue and prints them
- * until the entire file is recieved. If any request fails, an error
+ * until the entire file is received. If any request fails, an error
  * code is returned.
  *
  * @note This example is multi-threaded and uses statically allocated memory.
@@ -845,7 +845,7 @@ int main( int argc,
         /* The location of the path within the pre-signed URL. */
         const char * pPath = NULL;
 
-        /* The length of the path within the prr-signed URL. This variable is
+        /* The length of the path within the pre-signed URL. This variable is
          * defined in order to store the length returned from parsing the URL,
          * but it is unused. The path used for the requests in this demo needs
          * all the query information following the location of the object, to

@@ -53,12 +53,14 @@ globalsubackstatus
 globalsubscribepacketidentifier
 hashmap
 hasn
+hostlen
 html
 http
 httpbin
 httpclient
 httpmethodpaths
 https
+httpthread
 ifdef
 ifndef
 inc
@@ -87,6 +89,7 @@ numoftopicfilters
 openssl
 optionalquery
 org
+os
 outgoingpublishpackets
 outlength
 packetid
@@ -126,6 +129,7 @@ ppayload
 ppubinfo
 ppublishinfo
 pre
+prequest
 presigned
 printf
 processloop
@@ -146,12 +150,16 @@ py
 qos
 readme
 requestcount
+requestinfo
 requestqueue
+requesturilen
 resending
 resp
+responseitem
 responsequeue
 resubscribe
 resubscription
+retrievehttpresponse
 retryutils
 rom
 sdk
