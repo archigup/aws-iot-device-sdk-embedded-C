@@ -118,7 +118,7 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
       - name: Deploy doxygen for release tag
-        uses: archigup/CI-CD-Github-Actions/doxygen-generation@pages_index
+        uses: FreeRTOS/CI-CD-Github-Actions/doxygen-generation@main
         with:
           ref: ${{ github.event.inputs.version_number }}
           add_release: "true"
