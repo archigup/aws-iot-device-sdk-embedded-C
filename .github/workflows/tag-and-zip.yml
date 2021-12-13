@@ -112,3 +112,30 @@ jobs:
         with:
           name: aws-iot-device-sdk-embedded-C-${{ github.event.inputs.version_number }}.zip
           path: zip-check/aws-iot-device-sdk-embedded-C-${{ github.event.inputs.version_number }}.zip
+  deploy-docs:
+    needs: tag-commit
+    name: Deploy doxygen docs
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Deploy doxygen for release tag
+        uses: archigup/CI-CD-Github-Actions/doxygen-generation@pages_index
+        with:
+          generate_command: |
+            git submodule update --init --depth 1
+            if python3 tools/doxygen/generate_docs.py --root . ; then
+              find * -type d -wholename '*/output/html' -exec mkdir -p html/{} \; -exec cp -r {}/. html/{} \;
+              cat << END > html/index.html
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta http-equiv="refresh" content="0; url='docs/doxygen/output/html'" />
+              </head>
+              <body>
+                <p><a href="docs/doxygen/output/html">Click here if page does not redirect.</a></p>
+              </body>
+            </html>
+            END
+            else
+              exit 1
+            fi
+          output_dir: html
