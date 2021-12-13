@@ -120,6 +120,8 @@ jobs:
       - name: Deploy doxygen for release tag
         uses: archigup/CI-CD-Github-Actions/doxygen-generation@pages_index
         with:
+          ref: ${{ github.event.inputs.commit_id }}
+          add_release: "true"
           generate_command: |
             git submodule update --init --depth 1
             if python3 tools/doxygen/generate_docs.py --root . ; then
