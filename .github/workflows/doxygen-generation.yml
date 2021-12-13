@@ -1,0 +1,30 @@
+name: Doxygen Generation
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  doxygen-generation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Doxygen generation
+        uses: archigup/CI-CD-Github-Actions/doxygen-generation@pages_index
+        with:
+          generate_command: |
+            if python3 tools/doxygen/generate_docs.py --root . ; then
+              find * -type d -wholename '*/output/html' -exec mkdir -p html/{} \; -exec cp -r {} html/{} \;
+              cat << END
+            <!DOCTYPE html>
+            <html>
+              <head>
+                <meta http-equiv="refresh" content="7; url='docs/doxygen/output/html'" />
+              </head>
+              <body>
+                <p><a href="docs/doxygen/output/html">Click here if page does not redirect.</a></p>
+              </body>
+            </html>
+            END > html/index.html
+            else
+              exit 1
+            fi
+          output_dir: html
