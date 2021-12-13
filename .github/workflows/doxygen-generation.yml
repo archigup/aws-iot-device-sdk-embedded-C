@@ -13,7 +13,7 @@ jobs:
           generate_command: |
             git submodule update --init --depth 1
             if python3 tools/doxygen/generate_docs.py --root . ; then
-              find * -type d -wholename '*/docs/doxygen/output' -exec mkdir -p html/{} \; -exec mv {}/html html/{} \;
+              find * -type d -wholename '*/doxygen/output' -exec mkdir -p html/{} \; -exec mv {}/html html/{} \;
               cat << END > html/index.html
             <!DOCTYPE html>
             <html>
