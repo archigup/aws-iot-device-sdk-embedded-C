@@ -11,6 +11,7 @@ jobs:
         uses: archigup/CI-CD-Github-Actions/doxygen-generation@pages_index
         with:
           generate_command: |
+            git submodule update --init --depth 1
             if python3 tools/doxygen/generate_docs.py --root . ; then
               find * -type d -wholename '*/output/html' -exec mkdir -p html/{} \; -exec cp -r {} html/{} \;
             else
