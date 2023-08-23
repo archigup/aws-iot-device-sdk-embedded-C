@@ -25,9 +25,7 @@
 var NAVTREE =
 [
   [ "coreMQTT", "index.html", [
-    [ "Overview", "index.html", [
-      [ "Memory Requirements", "index.html#mqtt_memory_requirements", null ]
-    ] ],
+    [ "Overview", "index.html", "index" ],
     [ "Design", "mqtt_design.html", [
       [ "Interfaces and Callbacks", "mqtt_design.html#mqtt_interfaces", null ],
       [ "Serializers and Deserializers", "mqtt_design.html#mqtt_serializers", null ],
@@ -39,10 +37,9 @@ var NAVTREE =
     ] ],
     [ "Configurations", "core_mqtt_config.html", [
       [ "MQTT_DO_NOT_USE_CUSTOM_CONFIG", "core_mqtt_config.html#MQTT_DO_NOT_USE_CUSTOM_CONFIG", null ],
-      [ "MQTT_STATE_ARRAY_MAX_COUNT", "core_mqtt_config.html#MQTT_STATE_ARRAY_MAX_COUNT", null ],
       [ "MQTT_PINGRESP_TIMEOUT_MS", "core_mqtt_config.html#MQTT_PINGRESP_TIMEOUT_MS", null ],
       [ "MQTT_RECV_POLLING_TIMEOUT_MS", "core_mqtt_config.html#MQTT_RECV_POLLING_TIMEOUT_MS", null ],
-      [ "MQTT_SEND_RETRY_TIMEOUT_MS", "core_mqtt_config.html#MQTT_SEND_RETRY_TIMEOUT_MS", null ],
+      [ "MQTT_SEND_TIMEOUT_MS", "core_mqtt_config.html#MQTT_SEND_TIMEOUT_MS", null ],
       [ "MQTT_MAX_CONNACK_RECEIVE_RETRY_COUNT", "core_mqtt_config.html#MQTT_MAX_CONNACK_RECEIVE_RETRY_COUNT", null ],
       [ "LogError", "core_mqtt_config.html#mqtt_logerror", null ],
       [ "LogWarn", "core_mqtt_config.html#mqtt_logwarn", null ],
@@ -60,7 +57,7 @@ var NAVTREE =
       [ "MQTT Keep Alive interval", "mqtt_timeouts.html#mqtt_timeouts_keep_alive", null ],
       [ "MQTT Ping Response timeout", "mqtt_timeouts.html#mqtt_timeouts_ping_response", null ],
       [ "MQTT Receive Polling timeout", "mqtt_timeouts.html#mqtt_timeouts_receive_polling", null ],
-      [ "MQTT Send Retry timeout", "mqtt_timeouts.html#mqtt_timeouts_send_retry", null ],
+      [ "MQTT Send timeout", "mqtt_timeouts.html#mqtt_timeouts_send", null ],
       [ "Timeouts for MQTT_ProcessLoop and MQTT_ReceiveLoop APIs", "mqtt_timeouts.html#mqtt_timeouts_process_receive_loop", null ],
       [ "Timeout for MQTT_Connect", "mqtt_timeouts.html#mqtt_timeouts_connect", null ]
     ] ],
@@ -68,15 +65,13 @@ var NAVTREE =
       [ "Transport Interface Overview", "mqtt_transport_interface.html#mqtt_transport_interface_overview", null ],
       [ "Implementing the Transport Interface", "mqtt_transport_interface.html#mqtt_transport_interface_implementation", null ]
     ] ],
-    [ "Data types and Constants", "modules.html", "modules" ],
-    [ "Files", "files.html", "files" ]
+    [ "Data types and Constants", "modules.html", "modules" ]
   ] ]
 ];
 
 var NAVTREEINDEX =
 [
-"core__mqtt_8c.html",
-"group__mqtt__enum__types.html#ggaba7ec045874a1c3432f99173367f735cafd06b63fe9677fa2af06b0f4c7d4ad55"
+"core_mqtt_config.html"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

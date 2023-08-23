@@ -85,16 +85,14 @@ var NAVTREE =
     [ "Constants", "ota_constants.html", [
       [ "OTA Error Code Helper constants", "ota_constants.html#ota_constants_err_code_helpers", null ]
     ] ],
-    [ "Data types and Constants", "modules.html", "modules" ],
-    [ "Files", "files.html", "files" ]
+    [ "Data types and Constants", "modules.html", "modules" ]
   ] ]
 ];
 
 var NAVTREEINDEX =
 [
-"files.html",
-"ota_8h.html#aaf68d300d6ff9a8b4728b3d9e5f52b6d",
-"ota__private_8h.html#a9d3eb1ee8e8a129c990fe9effd93f91dafd2b3919afdda669abc466f3e21a2f8d"
+"group__ota__basic__types.html",
+"struct_ota_file_context__t.html#a67c5ddb9341a368e755b6ca386ea5d6f"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';
